@@ -18,7 +18,7 @@ func ConfiguredAuth() *Auth {
 	if err != nil {
 		log.Fatal(err)
 	}
-	dir = dir + "/../html"
+	dir = dir + "/html"
 
 	log.Info(dir)
 	fserver := http.FileServer(http.Dir(dir))
