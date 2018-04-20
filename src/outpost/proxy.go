@@ -2,56 +2,34 @@ package main
 
 import (
 	"net/http"
-	"net/http/httputil"
 	"net/url"
 	"strings"
 
-	"github.com/koding/websocketproxy"
 	log "github.com/sirupsen/logrus"
 )
 
 type Proxy struct {
-	Target *url.URL
-	Host   string
-
-	webProxy       *httputil.ReverseProxy
-	websocketProxy *websocketproxy.WebsocketProxy
+	webProxy       http.Handler
+	websocketProxy http.Handler
 }
 
-func NewProxy() *Proxy {
+func NewProxy(target, host string) *Proxy {
 	var proxy Proxy
 
-	proxy.webProxy = &httputil.ReverseProxy{
-		Director: proxy.director,
+	turl, err := url.Parse(target)
+	if err != nil {
+		log.WithError(err).Fatal("OUTPOST_TARGET is not valid url")
 	}
 
-	proxy.websocketProxy = &websocketproxy.WebsocketProxy{
-		Backend: proxy.websocketBackend,
-	}
+	proxy.webProxy = NewWebProxy(turl, host)
+	proxy.websocketProxy = NewWebsocketProxy(turl.Host)
 
 	return &proxy
 }
 
-func (p *Proxy) director(req *http.Request) {
-	req.URL.Scheme = p.Target.Scheme
-	req.URL.Host = p.Target.Host
-
-	if p.Host != "" {
-		req.Host = p.Host
-	}
-}
-
-func (p *Proxy) websocketBackend(req *http.Request) *url.URL {
-	// shallow copy
-	url := *(req.URL)
-	url.Host = p.Target.Host
-	url.Scheme = p.Target.Scheme
-	return &url
-}
-
 func (p *Proxy) TryServeHTTP(w http.ResponseWriter, r *http.Request) bool {
 	if p.isWebsocket(r) {
-		log.WithField("method", r.Method).WithField("url", r.URL.String()).Debug("via websocket")
+		log.WithField("method", r.Method).WithField("url", r.URL.String()).Debug("via websocket proxy")
 		p.websocketProxy.ServeHTTP(w, r)
 		return true
 	}

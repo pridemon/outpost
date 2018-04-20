@@ -5,7 +5,6 @@ import (
 	"html/template"
 	"io/ioutil"
 	"net/http"
-	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -54,18 +53,9 @@ func DisableSSLVerification() {
 }
 
 func ConfiguredProxy() *Proxy {
-
-	proxy := NewProxy()
-
-	if target, err := url.Parse(GetenvStrFatal("OUTPOST_TARGET")); err == nil {
-		proxy.Target = target
-	} else {
-		log.Fatal("OUTPOST_TARGET is not valid url")
-	}
-
-	proxy.Host = GetenvStr("OUTPOST_HOST", "")
-
-	return proxy
+	target := GetenvStrFatal("OUTPOST_TARGET")
+	host := GetenvStr("OUTPOST_HOST", "")
+	return NewProxy(target, host)
 }
 
 func GetenvStr(name string, fallback string) string {
