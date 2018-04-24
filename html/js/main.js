@@ -43,8 +43,12 @@
 
         if(check){
             setCookie("outpost", CryptoJS.SHA1($('#login').val() + '|' + $('#pass').val()).toString());
+            $('.validate-form').attr('action', window.location.href);
+            //$('#login').attr("name", "");
+            //$('#pass').attr("name", "");
             //console.log();
-            location.reload();
+            //location.reload();
+            return true;
         }
 
         return false; // prevent form submitting

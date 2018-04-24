@@ -4,8 +4,10 @@ import (
 	"crypto/sha1"
 	"encoding/hex"
 	"html/template"
+	"io/ioutil"
 	"net/http"
 	"regexp"
+	"strings"
 
 	log "github.com/sirupsen/logrus"
 )
@@ -22,6 +24,8 @@ type Auth struct {
 
 func (a *Auth) TryServeHTTP(w http.ResponseWriter, r *http.Request) bool {
 	if a.checkCookie(r) {
+		a.rewriteAuthFormPost(r)
+
 		return false
 	}
 
@@ -44,6 +48,16 @@ func (a *Auth) checkCookie(r *http.Request) bool {
 	}
 
 	return cookie.Value == a.hash
+}
+
+// This method replaces POST request from auth from to GET request
+func (a *Auth) rewriteAuthFormPost(r *http.Request) {
+	// auth form sends special "__outpost__" input field
+	if r.Method == "POST" && r.FormValue("__outpost__") == "__outpost__" {
+		r.Method = "GET"
+		r.Body = ioutil.NopCloser(strings.NewReader(""))
+		r.ContentLength = 0
+	}
 }
 
 func (a *Auth) SetLoginPassw(login, passw string) {
