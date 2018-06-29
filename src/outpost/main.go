@@ -24,6 +24,8 @@ func main() {
 	proxy := ConfiguredProxy()
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		PreventIndexing(w)
+
 		if auth.TryServeHTTP(w, r) {
 			return
 		}
