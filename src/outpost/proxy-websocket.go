@@ -5,11 +5,12 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"time"
 )
 
 func NewWebsocketProxy(target string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		d, err := net.Dial("tcp", target)
+		tgt, err := net.DialTimeout("tcp", target, 10*time.Second)
 		if err != nil {
 			http.Error(w, "Error contacting backend server.", 500)
 			log.Printf("Error dialing websocket backend %s: %v", target, err)
@@ -20,15 +21,15 @@ func NewWebsocketProxy(target string) http.Handler {
 			http.Error(w, "Not a hijacker?", 500)
 			return
 		}
-		nc, _, err := hj.Hijack()
+		cli, _, err := hj.Hijack()
 		if err != nil {
 			log.Printf("Hijack error: %v", err)
 			return
 		}
-		defer nc.Close()
-		defer d.Close()
+		defer cli.Close()
+		defer tgt.Close()
 
-		err = r.Write(d)
+		err = r.Write(tgt)
 		if err != nil {
 			log.Printf("Error copying request to target: %v", err)
 			return
@@ -39,8 +40,8 @@ func NewWebsocketProxy(target string) http.Handler {
 			_, err := io.Copy(dst, src)
 			errc <- err
 		}
-		go cp(d, nc)
-		go cp(nc, d)
+		go cp(tgt, cli)
+		go cp(cli, tgt)
 		<-errc
 	})
 }
