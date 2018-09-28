@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"crypto/sha1"
 	"encoding/hex"
 	"html/template"
@@ -50,13 +51,22 @@ func (a *Auth) checkCookie(r *http.Request) bool {
 	return cookie.Value == a.hash
 }
 
-// This method replaces POST request from auth from to GET request
+// This method replaces POST request from auth form to GET request
 func (a *Auth) rewriteAuthFormPost(r *http.Request) {
+	// NOTE: here we duplicate request body, because call to FormValue reads from r.Body buffer
+	body, _ := ioutil.ReadAll(r.Body) // TODO: error check?
+	buf1 := ioutil.NopCloser(bytes.NewBuffer(body))
+	buf2 := ioutil.NopCloser(bytes.NewBuffer(body))
+
+	r.Body = buf1 // first copy: for possible FormValue call
+
 	// auth form sends special "__outpost__" input field
 	if r.Method == "POST" && r.FormValue("__outpost__") == "__outpost__" {
 		r.Method = "GET"
 		r.Body = ioutil.NopCloser(strings.NewReader(""))
 		r.ContentLength = 0
+	} else {
+		r.Body = buf2 // second copy: restore original body state
 	}
 }
 
