@@ -1,20 +1,47 @@
 # vim: ts=2:sts=2:sw=2:expandtab:smarttab:
+kind: pipeline
+type: docker
+name: default
 
-pipeline:
-  build:
-    image: andrexus/golang-dep
+steps:
+  - name: build
+    image: golang:1.17
     commands:
-      - export GOPATH=$(pwd)
-      - cd src/outpost
-      - dep ensure -vendor-only
-      - go build
+      - go build -o build/server cmd/server/main.go
 
-  publish-docker:
-    image: plugins/docker
-    repo: ontrif/outpost
-    tag:
-      - latest
-      - ${DRONE_TAG}
+  - name: fenek-release
+    image: registry.wachanga.com/drone/fenek-release
     when:
       event: tag
-    secrets: [ docker_username, docker_password ]
+
+  - name: publish-dev
+    image: plugins/docker
+    when:
+      branch: develop
+      event:
+        exclude:
+          - pull_request
+    settings:
+      repo: registry.wachanga.com/backend/outpost
+      registry: registry.wachanga.com
+      tag:
+        - develop
+      username:
+        from_secret: docker_username
+      password:
+        from_secret: docker_password
+
+  - name: publish
+    image: plugins/docker
+    when:
+      event: tag
+    settings:
+      repo: registry.wachanga.com/backend/outpost
+      registry: registry.wachanga.com
+      username:
+        from_secret: docker_username
+      password:
+        from_secret: docker_password
+      tag:
+        - latest
+        - ${DRONE_TAG}
