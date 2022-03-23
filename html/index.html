@@ -16,33 +16,26 @@
 	<link rel="stylesheet" type="text/css" href="/__outpost__/css/util.css">
 	<link rel="stylesheet" type="text/css" href="/__outpost__/css/main.css">
 <!--===============================================================================================-->
-	<script>
-		function redirect() {
-			let curLocation = window.location.href;
-			let oauthUrl = '{{ .OAuthUrl }}';
-			window.location.href = `${oauthUrl}?origin=${curLocation}`;
-		}
-	</script>
 </head>
 <body>
 
 	<div class="limiter">
 		<div class="container-login100">
 			<div class="wrap-login100">
-				<span class="login100-form-title p-b-26">
-					{{ .Title }}
-				</span>
-				<span class="login100-form-title p-b-48">
-					<img height="200" src="{{ .Icon }}">
-				</span>
-				<div class="container-login100-form-btn">
-					<div class="wrap-login100-form-btn">
-						<div class="login100-form-bgbtn"></div>
-						<button class="login100-form-btn" onclick="redirect()">
-							Login
-						</button>
+				<form method="GET" action="{{ .OAuthUrl }}">
+					<span class="login100-form-title p-b-26">
+						{{ .Title }}
+					</span>
+					<span class="login100-form-title p-b-48">
+						<img height="200" src="{{ .Icon }}">
+					</span>
+					<div class="container-login100-form-btn">
+						<div class="wrap-login100-form-btn">
+							<div class="login100-form-bgbtn"></div>
+							<button class="login100-form-btn">Login</button>
+						</div>
 					</div>
-				</div>
+				</form>
 			</div>
 		</div>
 	</div>
