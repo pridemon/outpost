@@ -13,7 +13,9 @@ var (
 )
 
 type JwtConfig struct {
-	SignKey string `json:"sign_key" yaml:"sign_key" mapstructure:"sign_key"`
+	SignKey  string `json:"sign_key" yaml:"sign_key" mapstructure:"sign_key"`
+	Issuer   string `json:"iss" yaml:"iss" mapstructure:"iss"`
+	Audience string `json:"aud" yaml:"aud" mapstructure:"aud"`
 }
 
 type JwtClaims struct {
@@ -36,7 +38,8 @@ func (s *JwtService) CheckAccessToken(accessToken string) bool {
 		return []byte(s.Config.SignKey), nil
 	})
 
-	if err != nil || !token.Valid {
+	if err != nil || !token.Valid ||
+		claims.Issuer != s.Config.Issuer || claims.Audience != s.Config.Audience {
 		s.Log.WithField("error", ErrBadAccessToken)
 		return false
 	}

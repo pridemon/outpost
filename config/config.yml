@@ -17,3 +17,5 @@ log:
 
 jwt:
   sign_key: some_secret_sign_key
+  iss: https://auth.wachanga.com
+  aud: oauth_github
