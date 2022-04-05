@@ -1,0 +1,16 @@
+version: "3.9"
+
+services:
+  outpost:
+    build:
+      context: ./
+      dockerfile: Dockerfile-dev
+    volumes:
+      - "./:/app"
+    ports:
+      - "8080:8080"
+
+  hello-world:
+    image: tutum/hello-world
+    ports:
+      - "80:80"

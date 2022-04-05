@@ -1,0 +1,21 @@
+http:
+  port: 8080
+
+auth:
+  title: some_service
+  icon: https://is3-ssl.mzstatic.com/image/thumb/Purple118/v4/c1/3d/a5/c13da51a-5152-29d3-b668-4547e8873cc6/mzl.nhnzrmvu.png/230x0w.jpg
+  cookie_name: auth_token # must match the name of the backend-auth cookie
+  oauth_url: http://auth.wachanga.com/oauth/github
+  
+proxy:
+  target: http://hello-world:80
+  host: hello-world
+
+log:
+  # Available formats: json, plain
+  format: plain
+
+jwt:
+  sign_key: some_secret_sign_key
+  iss: https://auth.wachanga.com
+  aud: oauth_github

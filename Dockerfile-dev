@@ -1,0 +1,10 @@
+#
+# NOTE: based on tutorial https://firehydrant.io/blog/develop-a-go-app-with-docker-compose/
+#
+FROM golang:1.17 as base
+WORKDIR /app
+# install live-reload (cosmtrek/air)
+RUN curl -sSfL https://raw.githubusercontent.com/cosmtrek/air/master/install.sh | sh -s -- -b $(go env GOPATH)/bin
+
+# run live-reload in dev-mode
+CMD ["air"]
