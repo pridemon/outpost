@@ -182,7 +182,7 @@ iframe {
   background: #fff;
   border-radius: 10px;
   overflow: hidden;
-  padding: 77px 55px 33px 55px;
+  padding: 77px 55px 77px 55px;
 
   box-shadow: 0 5px 10px 0px rgba(0, 0, 0, 0.1);
   -moz-box-shadow: 0 5px 10px 0px rgba(0, 0, 0, 0.1);
@@ -414,7 +414,7 @@ iframe {
 
 @media (max-width: 576px) {
   .wrap-login100 {
-    padding: 77px 15px 33px 15px;
+    padding: 77px 15px 77px 15px;
   }
 }
 
