@@ -5,7 +5,7 @@ auth:
   title: some_service
   icon: https://is3-ssl.mzstatic.com/image/thumb/Purple118/v4/c1/3d/a5/c13da51a-5152-29d3-b668-4547e8873cc6/mzl.nhnzrmvu.png/230x0w.jpg
   cookie_name: auth_token # must match the name of the backend-auth cookie
-  oauth_url: http://auth.wachanga.com/oauth/github
+  oauth_url: https://auth.wachanga.com/api/1.0/oauth/github
   auth_headers:
     include: true
     headers:
