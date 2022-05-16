@@ -3,6 +3,7 @@ package auth
 import (
 	"html/template"
 	"net/http"
+	"reflect"
 	"regexp"
 
 	"github.com/goava/di"
@@ -11,10 +12,17 @@ import (
 )
 
 type AuthConfig struct {
-	Title      string `json:"title" yaml:"title" mapstructure:"title"`
-	Icon       string `json:"icon" yaml:"icon" mapstructure:"icon"`
-	CookieName string `json:"cookie_name" yaml:"cookie_name" mapstructure:"cookie_name"`
-	OAuthUrl   string `json:"oauth_url" yaml:"oauth_url" mapstructure:"oauth_url"`
+	Title       string `json:"title" yaml:"title" mapstructure:"title"`
+	Icon        string `json:"icon" yaml:"icon" mapstructure:"icon"`
+	CookieName  string `json:"cookie_name" yaml:"cookie_name" mapstructure:"cookie_name"`
+	OAuthUrl    string `json:"oauth_url" yaml:"oauth_url" mapstructure:"oauth_url"`
+	AuthHeaders struct {
+		Include bool `json:"include" yaml:"include" mapstructure:"include"`
+		Headers []struct {
+			HeaderName     string `json:"header_name" yaml:"header_name" mapstructure:"header_name"`
+			HeaderProperty string `json:"header_property" yaml:"header_property" mapstructure:"header_property"`
+		} `json:"headers" yaml:"headers" mapstructure:"headers"`
+	} `json:"auth_headers" yaml:"auth_headers" mapstructure:"auth_headers"`
 }
 
 type Auth struct {
@@ -60,7 +68,31 @@ func (a *Auth) checkCookie(r *http.Request) bool {
 		return false
 	}
 
-	return a.JwtService.CheckAccessToken(cookie.Value)
+	isValid, claims := a.JwtService.CheckAccessToken(cookie.Value)
+	if isValid {
+		a.setHeaders(r, claims)
+	}
+	return isValid
+
+}
+
+func (a *Auth) setHeaders(r *http.Request, claims *jwt.JwtClaims) {
+	if !a.Config.AuthHeaders.Include {
+		return
+	}
+
+	val := reflect.ValueOf(*claims)
+	t := val.Type()
+	for _, header := range a.Config.AuthHeaders.Headers {
+		for i := 0; i < t.NumField(); i++ {
+			// if field's json tag is equal to specified header property
+			// then header is set
+			if t.Field(i).Tag.Get("json") == header.HeaderProperty {
+				r.Header.Set(header.HeaderName, val.Field(i).String())
+				a.Log.WithField("header", header.HeaderName).Debug("header is set")
+			}
+		}
+	}
 }
 
 func (a *Auth) serveAuthPage(w http.ResponseWriter, r *http.Request) {
