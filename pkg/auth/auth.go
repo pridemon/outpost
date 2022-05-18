@@ -3,34 +3,28 @@ package auth
 import (
 	"html/template"
 	"net/http"
-	"reflect"
 	"regexp"
 
 	"github.com/goava/di"
+	authheaders "github.com/pridemon/outpost/pkg/auth_headers"
 	"github.com/pridemon/outpost/pkg/jwt"
 	"github.com/sirupsen/logrus"
 )
 
 type AuthConfig struct {
-	Title       string `json:"title" yaml:"title" mapstructure:"title"`
-	Icon        string `json:"icon" yaml:"icon" mapstructure:"icon"`
-	CookieName  string `json:"cookie_name" yaml:"cookie_name" mapstructure:"cookie_name"`
-	OAuthUrl    string `json:"oauth_url" yaml:"oauth_url" mapstructure:"oauth_url"`
-	AuthHeaders struct {
-		Include bool `json:"include" yaml:"include" mapstructure:"include"`
-		Headers []struct {
-			HeaderName     string `json:"header_name" yaml:"header_name" mapstructure:"header_name"`
-			HeaderProperty string `json:"header_property" yaml:"header_property" mapstructure:"header_property"`
-		} `json:"headers" yaml:"headers" mapstructure:"headers"`
-	} `json:"auth_headers" yaml:"auth_headers" mapstructure:"auth_headers"`
+	Title      string `json:"title" yaml:"title" mapstructure:"title"`
+	Icon       string `json:"icon" yaml:"icon" mapstructure:"icon"`
+	CookieName string `json:"cookie_name" yaml:"cookie_name" mapstructure:"cookie_name"`
+	OAuthUrl   string `json:"oauth_url" yaml:"oauth_url" mapstructure:"oauth_url"`
 }
 
 type Auth struct {
 	di.Inject
 
-	Log        *logrus.Logger
-	Config     *AuthConfig
-	JwtService *jwt.JwtService
+	Log                *logrus.Logger
+	Config             *AuthConfig
+	JwtService         *jwt.JwtService
+	AuthHeadersService *authheaders.AuthHeadersService
 
 	fserver http.Handler
 	reURL   *regexp.Regexp
@@ -46,7 +40,8 @@ func NewAuth(fserver http.Handler, reURL *regexp.Regexp, page *template.Template
 }
 
 func (a *Auth) TryServeHTTP(w http.ResponseWriter, r *http.Request) bool {
-	if a.checkCookie(r) {
+	if isValid, claims := a.checkCookie(r); isValid {
+		a.AuthHeadersService.Process(r, claims)
 		return false
 	}
 
@@ -62,37 +57,13 @@ func (a *Auth) TryServeHTTP(w http.ResponseWriter, r *http.Request) bool {
 	return true
 }
 
-func (a *Auth) checkCookie(r *http.Request) bool {
+func (a *Auth) checkCookie(r *http.Request) (bool, *jwt.JwtClaims) {
 	cookie, err := r.Cookie(a.Config.CookieName)
 	if err != nil {
-		return false
+		return false, nil
 	}
 
-	isValid, claims := a.JwtService.CheckAccessToken(cookie.Value)
-	if isValid {
-		a.setHeaders(r, claims)
-	}
-	return isValid
-
-}
-
-func (a *Auth) setHeaders(r *http.Request, claims *jwt.JwtClaims) {
-	if !a.Config.AuthHeaders.Include {
-		return
-	}
-
-	val := reflect.ValueOf(*claims)
-	t := val.Type()
-	for _, header := range a.Config.AuthHeaders.Headers {
-		for i := 0; i < t.NumField(); i++ {
-			// if field's json tag is equal to specified header property
-			// then header is set
-			if t.Field(i).Tag.Get("json") == header.HeaderProperty {
-				r.Header.Set(header.HeaderName, val.Field(i).String())
-				a.Log.WithField("header", header.HeaderName).Debug("header is set")
-			}
-		}
-	}
+	return a.JwtService.CheckAccessToken(cookie.Value)
 }
 
 func (a *Auth) serveAuthPage(w http.ResponseWriter, r *http.Request) {
