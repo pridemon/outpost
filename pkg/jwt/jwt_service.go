@@ -32,7 +32,7 @@ type JwtService struct {
 	Config *JwtConfig
 }
 
-func (s *JwtService) CheckAccessToken(accessToken string) bool {
+func (s *JwtService) CheckAccessToken(accessToken string) (bool, *JwtClaims) {
 	var claims JwtClaims
 	token, err := jwt.ParseWithClaims(accessToken, &claims, func(token *jwt.Token) (interface{}, error) {
 		return []byte(s.Config.SignKey), nil
@@ -41,8 +41,8 @@ func (s *JwtService) CheckAccessToken(accessToken string) bool {
 	if err != nil || !token.Valid ||
 		claims.Issuer != s.Config.Issuer || claims.Audience != s.Config.Audience {
 		s.Log.WithField("error", ErrBadAccessToken)
-		return false
+		return false, nil
 	}
 
-	return true
+	return true, &claims
 }

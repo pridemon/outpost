@@ -22,6 +22,7 @@ func main() {
 		internal.LogrusModule,
 
 		internal.JwtModule,
+		internal.AuthHeadersModule,
 		internal.AuthModule,
 		internal.ProxyModule,
 

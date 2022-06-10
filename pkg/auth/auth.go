@@ -6,6 +6,7 @@ import (
 	"regexp"
 
 	"github.com/goava/di"
+	authheaders "github.com/pridemon/outpost/pkg/auth_headers"
 	"github.com/pridemon/outpost/pkg/jwt"
 	"github.com/sirupsen/logrus"
 )
@@ -20,9 +21,10 @@ type AuthConfig struct {
 type Auth struct {
 	di.Inject
 
-	Log        *logrus.Logger
-	Config     *AuthConfig
-	JwtService *jwt.JwtService
+	Log                *logrus.Logger
+	Config             *AuthConfig
+	JwtService         *jwt.JwtService
+	AuthHeadersService *authheaders.AuthHeadersService
 
 	fserver http.Handler
 	reURL   *regexp.Regexp
@@ -38,7 +40,8 @@ func NewAuth(fserver http.Handler, reURL *regexp.Regexp, page *template.Template
 }
 
 func (a *Auth) TryServeHTTP(w http.ResponseWriter, r *http.Request) bool {
-	if a.checkCookie(r) {
+	if isValid, claims := a.checkCookie(r); isValid {
+		a.AuthHeadersService.Process(r, claims)
 		return false
 	}
 
@@ -54,10 +57,10 @@ func (a *Auth) TryServeHTTP(w http.ResponseWriter, r *http.Request) bool {
 	return true
 }
 
-func (a *Auth) checkCookie(r *http.Request) bool {
+func (a *Auth) checkCookie(r *http.Request) (bool, *jwt.JwtClaims) {
 	cookie, err := r.Cookie(a.Config.CookieName)
 	if err != nil {
-		return false
+		return false, nil
 	}
 
 	return a.JwtService.CheckAccessToken(cookie.Value)
