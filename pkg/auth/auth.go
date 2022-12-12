@@ -67,6 +67,8 @@ func (a *Auth) checkCookie(r *http.Request) (bool, *jwt.JwtClaims) {
 }
 
 func (a *Auth) serveAuthPage(w http.ResponseWriter, r *http.Request) {
+    w.WriteHeader(http.StatusUnauthorized)  // NOTE: 401 code helps js web-applications to determine expired tokens
+
 	if err := a.page.Execute(w, a.Config); err != nil {
 		a.Log.Error(err)
 	}
