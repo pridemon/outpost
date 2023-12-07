@@ -23,12 +23,12 @@ type Proxy struct {
 
 func (p *Proxy) TryServeHTTP(w http.ResponseWriter, r *http.Request) bool {
 	if p.isWebsocket(r) {
-		p.Log.WithField("method", r.Method).WithField("url", r.URL.String()).Debug("via websocket proxy")
+		p.Log.WithField("method", r.Method).WithField("url", r.URL.String()).Debug("proxy: via websocket proxy")
 		p.WebsocketProxy.ServeHTTP(w, r)
 		return true
 	}
 
-	p.Log.WithField("method", r.Method).WithField("url", r.URL.String()).Debug("via proxy")
+	p.Log.WithField("method", r.Method).WithField("url", r.URL.String()).Debug("proxy: via proxy")
 	p.WebProxy.ServeHTTP(w, r)
 	return true
 }
