@@ -10,6 +10,14 @@ services:
     ports:
       - "8080:8080"
 
+  mysql:
+    image: mysql
+    environment:
+      - MYSQL_ROOT_PASSWORD=pass
+      - MYSQL_DATABASE=outpost
+    ports:
+      - "3306:3306"
+
   hello-world:
     image: tutum/hello-world
     ports:
