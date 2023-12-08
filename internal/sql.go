@@ -52,6 +52,6 @@ func MysqlDatabaseProvider(conf *MysqlConfig) (*gorm.DB, error) {
 
 func GormMigrate(db *gorm.DB) error {
 	return db.AutoMigrate(
-		&models.Token{},
+		&models.RefreshInfo{},
 	)
 }

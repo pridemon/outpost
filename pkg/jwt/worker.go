@@ -11,16 +11,16 @@ import (
 type Worker struct {
 	di.Inject
 
-	Log              *logrus.Logger
-	Config           *JwtConfig
-	TokensRepository *repository.TokensRepository
+	Log                   *logrus.Logger
+	Config                *JwtConfig
+	RefreshInfoRepository *repository.RefreshInfoRepository
 }
 
 func (w *Worker) Run() {
 	for {
 		checkTime := time.Now().Add(-1 * w.Config.RefreshTokenTTL) // find edge time for created_at
 
-		n, err := w.TokensRepository.DeleteWithCreatedAtLT(checkTime)
+		n, err := w.RefreshInfoRepository.DeleteWithCreatedAtLT(checkTime)
 		if err != nil {
 			w.Log.Errorf("jwt.worker: error during sql query: %v", err)
 		} else {

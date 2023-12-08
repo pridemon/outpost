@@ -13,38 +13,26 @@ import (
 type TokensService struct {
 	di.Inject
 
-	AuthApi            *authapi.AuthApi
-	AuthHeadersService *authheaders.AuthHeadersService
-	JwtService         *jwt.JwtService
-	TokensRepository   *repository.TokensRepository
-}
-
-func (srv *TokensService) ProcessTokens(accessToken string, refreshToken string) (*jwt.JwtClaims, error) {
-	claims, err := srv.ProcessAccessToken(accessToken)
-	if err != nil {
-		return nil, err
-	}
-
-	if refreshToken != "" {
-		err = srv.TokensRepository.Insert(&models.Token{
-			Hash:         utils.GetMD5Hash(accessToken),
-			RefreshToken: refreshToken,
-		})
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	return claims, nil
+	AuthApi               *authapi.AuthApi
+	AuthHeadersService    *authheaders.AuthHeadersService
+	JwtService            *jwt.JwtService
+	RefreshInfoRepository *repository.RefreshInfoRepository
 }
 
 func (srv *TokensService) ProcessAccessToken(accessToken string) (*jwt.JwtClaims, error) {
 	return srv.JwtService.CheckAccessToken(accessToken)
 }
 
+func (srv *TokensService) ProcessRefreshToken(accessToken string, refreshToken string) error {
+	return srv.RefreshInfoRepository.Insert(&models.RefreshInfo{
+		Hash:         utils.GetMD5Hash(accessToken),
+		RefreshToken: refreshToken,
+	})
+}
+
 func (srv *TokensService) RefreshToken(accessToken string) (string, error) {
 	hash := utils.GetMD5Hash(accessToken)
-	foundToken, err := srv.TokensRepository.FindToken(hash)
+	foundToken, err := srv.RefreshInfoRepository.Find(hash)
 	if err != nil {
 		return "", err
 	}
@@ -54,7 +42,7 @@ func (srv *TokensService) RefreshToken(accessToken string) (string, error) {
 		return "", err
 	}
 
-	err = srv.TokensRepository.Insert(&models.Token{
+	err = srv.RefreshInfoRepository.Insert(&models.RefreshInfo{
 		Hash:         utils.GetMD5Hash(newTokens.AccessToken),
 		RefreshToken: newTokens.RefreshToken,
 	})
@@ -62,7 +50,7 @@ func (srv *TokensService) RefreshToken(accessToken string) (string, error) {
 		return "", err
 	}
 
-	err = srv.TokensRepository.DeleteByHash(hash)
+	err = srv.RefreshInfoRepository.DeleteByHash(hash)
 	if err != nil {
 		return "", err
 	}

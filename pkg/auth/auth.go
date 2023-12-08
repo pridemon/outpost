@@ -48,27 +48,18 @@ func (a *Auth) TryServeHTTP(w http.ResponseWriter, r *http.Request) bool {
 		return a.serveViaFserver(w, r)
 	}
 
-	var accessCookieValue, refreshCookieValue string
-
 	accessCookie, err := r.Cookie(a.Config.AccessCookieName)
 	if err != nil {
 		a.Log.Errorf("auth: error getting cookie with access token: %v", err)
 		return a.serveAuthPage(w, r)
 	}
-	accessCookieValue = accessCookie.Value
 
-	refreshCookie, _ := r.Cookie(a.Config.RefreshCookieName)
-	if refreshCookie != nil && refreshCookie.Value != "" {
-		refreshCookieValue = refreshCookie.Value
-		a.deleteCookie(w, refreshCookie)
-	}
-
-	claims, err := a.TokensService.ProcessTokens(accessCookieValue, refreshCookieValue)
-
-	if errors.Is(err, jwt.ErrBadAccessToken) && !a.reURL.MatchString(r.URL.Path) {
+	claims, err := a.TokensService.ProcessAccessToken(accessCookie.Value)
+	switch {
+	case errors.Is(err, jwt.ErrBadAccessToken):
 		a.Log.WithField("error", err).Debug("auth: trying to refresh access token")
 
-		accessToken, err := a.TokensService.RefreshToken(accessCookieValue)
+		accessToken, err := a.TokensService.RefreshToken(accessCookie.Value)
 		if err != nil {
 			a.Log.Errorf("auth: error refreshing access token: %v", err)
 			return a.serveAuthPage(w, r)
@@ -81,9 +72,22 @@ func (a *Auth) TryServeHTTP(w http.ResponseWriter, r *http.Request) bool {
 		}
 
 		a.updateCookie(w, accessCookie, accessToken)
-	} else if err != nil {
-		a.Log.Errorf("auth: error processing tokens: %v", err)
+
+	case err != nil:
+		a.Log.Errorf("auth: error processing access token: %v", err)
 		return a.serveAuthPage(w, r)
+
+	default:
+		refreshCookie, _ := r.Cookie(a.Config.RefreshCookieName)
+		if refreshCookie != nil && refreshCookie.Value != "" {
+			err = a.TokensService.ProcessRefreshToken(accessCookie.Value, refreshCookie.Value)
+			if err != nil {
+				a.Log.Errorf("auth: error processing refresh token: %v", err)
+				return a.serveAuthPage(w, r)
+			}
+
+			a.deleteCookie(w, refreshCookie)
+		}
 	}
 
 	a.AuthHeadersService.Process(r, claims)
