@@ -5,7 +5,7 @@ import (
 )
 
 type RefreshInfo struct {
-	Hash         string `gorm:"type:char(32);not null;uniqueIndex:refresh_info_idx;"`
+	Hash         string `gorm:"type:char(32);not null;uniqueIndex:refresh_info_idx;index:hash_idx"`
 	RefreshToken string `gorm:"type:char(18);not null;uniqueIndex:refresh_info_idx;"`
 
 	gorm.Model
