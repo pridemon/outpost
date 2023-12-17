@@ -2,8 +2,8 @@ package internal
 
 import (
 	"html/template"
-	"io/ioutil"
 	"net/http"
+	"os"
 	"path/filepath"
 	"regexp"
 
@@ -32,7 +32,7 @@ func AuthProvider(config *auth.AuthConfig) (*auth.Auth, error) {
 
 	fserver := http.FileServer(http.Dir(dir))
 
-	bytes, err := ioutil.ReadFile(dir + "/index.html")
+	bytes, err := os.ReadFile(dir + "/index.html")
 	if err != nil {
 		return nil, err
 	}

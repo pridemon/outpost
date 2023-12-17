@@ -33,6 +33,6 @@ func (s *AuthHeadersService) Process(r *http.Request, claims *jwt.JwtClaims) {
 
 	for property, headerName := range s.Config.Headers {
 		r.Header.Set(headerName, values[property])
-		s.Log.WithField("header", headerName).Debug("header is set")
+		s.Log.WithField("header", headerName).Debug("auth_headers: header is set")
 	}
 }

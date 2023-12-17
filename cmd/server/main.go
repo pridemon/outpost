@@ -8,6 +8,7 @@ import (
 	"github.com/goava/di"
 	"github.com/pridemon/outpost/internal"
 	"github.com/pridemon/outpost/pkg/auth"
+	"github.com/pridemon/outpost/pkg/jwt"
 	"github.com/pridemon/outpost/pkg/proxy"
 	"github.com/pridemon/outpost/pkg/utils"
 	"github.com/sirupsen/logrus"
@@ -20,12 +21,16 @@ func main() {
 		internal.HttpModule,
 		internal.ViperModule,
 		internal.LogrusModule,
+		internal.RestyModule,
 
 		internal.JwtModule,
-		internal.AuthHeadersModule,
 		internal.AuthModule,
+		internal.AuthHeadersModule,
+		internal.AuthApiModule,
 		internal.ProxyModule,
+		internal.SqlModule,
 
+		di.Invoke(RunJwtWorker),
 		di.Invoke(RunServer),
 	)
 	if err != nil {
@@ -33,6 +38,10 @@ func main() {
 	}
 
 	container.Cleanup()
+}
+
+func RunJwtWorker(w *jwt.Worker) {
+	go w.Run()
 }
 
 func RunServer(auth *auth.Auth, proxy *proxy.Proxy, httpConfig *internal.HttpConfig, log *logrus.Logger) {
