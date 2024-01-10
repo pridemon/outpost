@@ -29,6 +29,7 @@ func main() {
 		internal.AuthApiModule,
 		internal.ProxyModule,
 		internal.SqlModule,
+		internal.TokensModule,
 
 		di.Invoke(RunJwtWorker),
 		di.Invoke(RunServer),
