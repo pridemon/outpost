@@ -1,7 +1,7 @@
 package tokens
 
 import (
-	"sync"
+	"errors"
 
 	"github.com/goava/di"
 	authapi "github.com/pridemon/outpost/pkg/auth_api"
@@ -10,6 +10,11 @@ import (
 	"github.com/pridemon/outpost/pkg/models"
 	"github.com/pridemon/outpost/pkg/repository"
 	"github.com/pridemon/outpost/pkg/utils"
+	"golang.org/x/sync/semaphore"
+)
+
+var (
+	ErrBusyToken = errors.New("token is busy")
 )
 
 type TokensService struct {
@@ -20,35 +25,20 @@ type TokensService struct {
 	JwtService            *jwt.JwtService
 	RefreshInfoRepository *repository.RefreshInfoRepository
 
-	mutex            sync.Mutex
-	processingTokens map[string]bool
+	processingTokens map[string]*semaphore.Weighted
 }
 
 func NewTokensService() *TokensService {
 	return &TokensService{
-		mutex:            sync.Mutex{},
-		processingTokens: make(map[string]bool),
+		processingTokens: make(map[string]*semaphore.Weighted),
 	}
 }
 
-func (srv *TokensService) IsProcessing(accessToken string) bool {
-	srv.mutex.Lock()
-	defer srv.mutex.Unlock()
-
-	return srv.processingTokens[accessToken]
-}
-
 func (srv *TokensService) ProcessAccessToken(accessToken string) (*jwt.JwtClaims, error) {
-	srv.markAsProcessing(accessToken)
-	defer srv.markAsFinished(accessToken)
-
 	return srv.JwtService.CheckAccessToken(accessToken)
 }
 
 func (srv *TokensService) ProcessRefreshToken(accessToken string, refreshToken string) error {
-	srv.markAsProcessing(accessToken)
-	defer srv.markAsFinished(accessToken)
-
 	return srv.RefreshInfoRepository.Insert(&models.RefreshInfo{
 		Hash:         utils.GetMD5Hash(accessToken),
 		RefreshToken: refreshToken,
@@ -56,8 +46,10 @@ func (srv *TokensService) ProcessRefreshToken(accessToken string, refreshToken s
 }
 
 func (srv *TokensService) RefreshToken(accessToken string) (string, error) {
-	srv.markAsProcessing(accessToken)
-	defer srv.markAsFinished(accessToken)
+	if err := srv.lockToken(accessToken); err != nil {
+		return "", err
+	}
+	defer srv.unlockToken(accessToken)
 
 	hash := utils.GetMD5Hash(accessToken)
 	foundToken, err := srv.RefreshInfoRepository.Find(hash)
@@ -86,16 +78,18 @@ func (srv *TokensService) RefreshToken(accessToken string) (string, error) {
 	return newTokens.AccessToken, nil
 }
 
-func (srv *TokensService) markAsProcessing(accessToken string) {
-	srv.mutex.Lock()
-	defer srv.mutex.Unlock()
+func (srv *TokensService) lockToken(accessToken string) error {
+	if srv.processingTokens[accessToken] == nil {
+		srv.processingTokens[accessToken] = semaphore.NewWeighted(1)
+	}
 
-	srv.processingTokens[accessToken] = true
+	if !srv.processingTokens[accessToken].TryAcquire(1) {
+		return ErrBusyToken
+	}
+
+	return nil
 }
 
-func (srv *TokensService) markAsFinished(accessToken string) {
-	srv.mutex.Lock()
-	defer srv.mutex.Unlock()
-
+func (srv *TokensService) unlockToken(accessToken string) {
 	delete(srv.processingTokens, accessToken)
 }
