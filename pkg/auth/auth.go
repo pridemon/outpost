@@ -5,7 +5,6 @@ import (
 	"html/template"
 	"net/http"
 	"regexp"
-	"time"
 
 	"github.com/goava/di"
 	authheaders "github.com/pridemon/outpost/pkg/auth_headers"
@@ -118,7 +117,6 @@ func (a *Auth) serveAuthPage(w http.ResponseWriter, r *http.Request) bool {
 
 func (a *Auth) resend(w http.ResponseWriter, r *http.Request) bool {
 	a.Log.WithField("method", r.Method).WithField("url", r.URL.String()).Debug("auth: resending request")
-	time.Sleep(100 * time.Millisecond)
 	http.Redirect(w, r, r.URL.String(), http.StatusTemporaryRedirect)
 	return true
 }

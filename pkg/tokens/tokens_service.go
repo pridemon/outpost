@@ -2,6 +2,7 @@ package tokens
 
 import (
 	"errors"
+	"sync"
 
 	"github.com/goava/di"
 	authapi "github.com/pridemon/outpost/pkg/auth_api"
@@ -10,7 +11,6 @@ import (
 	"github.com/pridemon/outpost/pkg/models"
 	"github.com/pridemon/outpost/pkg/repository"
 	"github.com/pridemon/outpost/pkg/utils"
-	"golang.org/x/sync/semaphore"
 )
 
 var (
@@ -25,12 +25,13 @@ type TokensService struct {
 	JwtService            *jwt.JwtService
 	RefreshInfoRepository *repository.RefreshInfoRepository
 
-	processingTokens map[string]*semaphore.Weighted
+	processingTokens map[string]*sync.WaitGroup
+	mutex            sync.Mutex
 }
 
 func NewTokensService() *TokensService {
 	return &TokensService{
-		processingTokens: make(map[string]*semaphore.Weighted),
+		processingTokens: make(map[string]*sync.WaitGroup),
 	}
 }
 
@@ -46,11 +47,25 @@ func (srv *TokensService) ProcessRefreshToken(accessToken string, refreshToken s
 }
 
 func (srv *TokensService) RefreshToken(accessToken string) (string, error) {
-	if err := srv.lockToken(accessToken); err != nil {
-		return "", err
-	}
-	defer srv.unlockToken(accessToken)
+	srv.mutex.Lock()
+	defer srv.mutex.Unlock()
 
+	if srv.processingTokens[accessToken] == nil {
+		srv.processingTokens[accessToken] = &sync.WaitGroup{}
+		srv.processingTokens[accessToken].Add(1)
+
+		newToken, err := srv.refreshToken(accessToken)
+
+		srv.processingTokens[accessToken].Done()
+		return newToken, err
+	}
+
+	srv.processingTokens[accessToken].Wait()
+	delete(srv.processingTokens, accessToken)
+	return "", ErrBusyToken
+}
+
+func (srv *TokensService) refreshToken(accessToken string) (string, error) {
 	hash := utils.GetMD5Hash(accessToken)
 	foundToken, err := srv.RefreshInfoRepository.Find(hash)
 	if err != nil {
@@ -76,20 +91,4 @@ func (srv *TokensService) RefreshToken(accessToken string) (string, error) {
 	}
 
 	return newTokens.AccessToken, nil
-}
-
-func (srv *TokensService) lockToken(accessToken string) error {
-	if srv.processingTokens[accessToken] == nil {
-		srv.processingTokens[accessToken] = semaphore.NewWeighted(1)
-	}
-
-	if !srv.processingTokens[accessToken].TryAcquire(1) {
-		return ErrBusyToken
-	}
-
-	return nil
-}
-
-func (srv *TokensService) unlockToken(accessToken string) {
-	delete(srv.processingTokens, accessToken)
 }
