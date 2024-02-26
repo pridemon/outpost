@@ -3,6 +3,7 @@ package tokens
 import (
 	"errors"
 	"sync"
+	"time"
 
 	"github.com/goava/di"
 	authapi "github.com/pridemon/outpost/pkg/auth_api"
@@ -17,8 +18,14 @@ var (
 	ErrBusyToken = errors.New("token is busy")
 )
 
+type TokensConfig struct {
+	CleanerDelay time.Duration `json:"cleaner_delay" yaml:"cleaner_delay" mapstructure:"cleaner_delay"`
+}
+
 type TokensService struct {
 	di.Inject
+
+	Config *TokensConfig
 
 	AuthApi               *authapi.AuthApi
 	AuthHeadersService    *authheaders.AuthHeadersService
@@ -47,21 +54,32 @@ func (srv *TokensService) ProcessRefreshToken(accessToken string, refreshToken s
 }
 
 func (srv *TokensService) RefreshToken(accessToken string) (string, error) {
-	srv.mutex.Lock()
-	defer srv.mutex.Unlock()
+	var created bool
 
+	srv.mutex.Lock()
 	if srv.processingTokens[accessToken] == nil {
 		srv.processingTokens[accessToken] = &sync.WaitGroup{}
-		srv.processingTokens[accessToken].Add(1)
+		created = true
+	}
+	curWg := srv.processingTokens[accessToken]
+	srv.mutex.Unlock()
 
+	if created {
+		curWg.Add(1)
 		newToken, err := srv.refreshToken(accessToken)
+		if err != nil {
+			srv.deleteProcessingAccessToken(accessToken)
+			return "", err
+		}
+		curWg.Done()
 
-		srv.processingTokens[accessToken].Done()
-		return newToken, err
+		// run cleaner function in another goroutine
+		go srv.deleteProcessingAccessTokenAfterDelay(accessToken)
+
+		return newToken, nil
 	}
 
-	srv.processingTokens[accessToken].Wait()
-	delete(srv.processingTokens, accessToken)
+	curWg.Wait()
 	return "", ErrBusyToken
 }
 
@@ -91,4 +109,17 @@ func (srv *TokensService) refreshToken(accessToken string) (string, error) {
 	}
 
 	return newTokens.AccessToken, nil
+}
+
+func (srv *TokensService) deleteProcessingAccessTokenAfterDelay(accessToken string) {
+	// delaying the deletion to let all the requests with this access token be processed
+	time.Sleep(srv.Config.CleanerDelay)
+
+	srv.deleteProcessingAccessToken(accessToken)
+}
+
+func (srv *TokensService) deleteProcessingAccessToken(accessToken string) {
+	srv.mutex.Lock()
+	delete(srv.processingTokens, accessToken)
+	srv.mutex.Unlock()
 }
