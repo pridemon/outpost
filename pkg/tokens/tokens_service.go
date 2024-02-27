@@ -111,6 +111,13 @@ func (srv *TokensService) refreshToken(accessToken string) (string, error) {
 	return newTokens.AccessToken, nil
 }
 
+// deleteProcessingAccessTokenAfterDelay is used for the case when:
+//   - TokensService has already refreshed the token
+//   - WaitGroup counter in processingTokens equals to 0
+//   - but requests with an expired token continue to come
+//
+// deleteProcessingAccessTokenAfterDelay deletes the token from processingTokens after some delay
+// so that all requests with an expired token can be processed correctly
 func (srv *TokensService) deleteProcessingAccessTokenAfterDelay(accessToken string) {
 	// delaying the deletion to let all the requests with this access token be processed
 	time.Sleep(srv.Config.CleanerDelay)
