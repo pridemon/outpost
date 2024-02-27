@@ -45,3 +45,6 @@ mysql:
 
 auth_api:
   host: "https://auth.wachanga.com"
+
+tokens_service:
+  cleaner_delay: 5s

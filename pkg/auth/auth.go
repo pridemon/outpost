@@ -60,7 +60,9 @@ func (a *Auth) TryServeHTTP(w http.ResponseWriter, r *http.Request) bool {
 		a.Log.WithField("error", err).Debug("auth: trying to refresh access token")
 
 		accessToken, err := a.TokensService.RefreshToken(accessCookie.Value)
-		if err != nil {
+		if errors.Is(err, tokens.ErrBusyToken) {
+			return a.resend(w, r)
+		} else if err != nil {
 			a.Log.Errorf("auth: error refreshing access token: %v", err)
 			return a.serveAuthPage(w, r)
 		}
@@ -110,6 +112,12 @@ func (a *Auth) serveAuthPage(w http.ResponseWriter, r *http.Request) bool {
 		a.Log.Errorf("auth: error executing auth page: %v", err)
 	}
 
+	return true
+}
+
+func (a *Auth) resend(w http.ResponseWriter, r *http.Request) bool {
+	a.Log.WithField("method", r.Method).WithField("url", r.URL.String()).Debug("auth: resending request")
+	http.Redirect(w, r, r.URL.String(), http.StatusTemporaryRedirect)
 	return true
 }
 
