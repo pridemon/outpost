@@ -42,8 +42,26 @@ func (s *JwtService) CheckAccessToken(accessToken string) (*JwtClaims, error) {
 		return []byte(s.Config.SignKey), nil
 	})
 
-	if err != nil || !token.Valid || claims.Issuer != s.Config.Issuer || claims.Audience != s.Config.Audience {
+	if err != nil {
 		err = fmt.Errorf("%w: %s", ErrBadAccessToken, err.Error())
+		s.Log.Errorf("jwt.jwt_service: error checking access token: %v", err)
+		return nil, err
+	}
+
+	if !token.Valid {
+		err = fmt.Errorf("%w: token is not valid", ErrBadAccessToken)
+		s.Log.Errorf("jwt.jwt_service: error checking access token: %v", err)
+		return nil, err
+	}
+
+	if claims.Issuer != s.Config.Issuer {
+		err = fmt.Errorf("%w: iss '%s' don't match value from config", ErrBadAccessToken, claims.Issuer)
+		s.Log.Errorf("jwt.jwt_service: error checking access token: %v", err)
+		return nil, err
+	}
+
+	if claims.Audience != s.Config.Audience {
+		err = fmt.Errorf("%w: aud '%s' don't match value from config", ErrBadAccessToken, claims.Audience)
 		s.Log.Errorf("jwt.jwt_service: error checking access token: %v", err)
 		return nil, err
 	}
