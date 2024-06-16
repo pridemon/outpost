@@ -23,7 +23,7 @@ type JwtConfig struct {
 }
 
 type JwtClaims struct {
-	Subject uint   `json:"sub,omitempty"`
+	Subject string `json:"sub,omitempty"`
 	Login   string `json:"login"`
 	Email   string `json:"email"`
 	jwt.StandardClaims
